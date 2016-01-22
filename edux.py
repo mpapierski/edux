@@ -135,8 +135,6 @@ def get_courses():
 
 
 def main():
-    p = '/Users/michal/Downloads/edux'
-
     try:
         print 'login'
         login(os.environ['EDUX_USERNAME'], os.environ['EDUX_PASSWORD'])
@@ -146,18 +144,6 @@ def main():
         get_courses()
     finally:
         print 'logout'
-
-    return
-
-    with open(os.path.join(p, 'Premain.aspx.html')) as fileobj:
-        for (course_id, title, href) in extract_courses(fileobj):
-            print (course_id, title, href)
-
-    with open(os.path.join(p, 'Announcements.aspx.html')) as fileobj:
-        for (timestamp, message) in extract_announcements(fileobj):
-            print '---'
-            print timestamp
-            print message
 
 
 if __name__ == '__main__':
