@@ -125,13 +125,8 @@ def get_courses():
         # Get inside the course
         r = s.get(url)
         r.raise_for_status()
-        try:
-            print course_id
-            get_announcements(url)
-        finally:
-            # Go back (is)
-            # r = s.get('https://edux.pjwstk.edu.pl/premain.aspx')
-            pass
+        # Get announcement for this course
+        get_announcements(url)
 
 
 def main():
