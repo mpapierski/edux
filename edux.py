@@ -99,6 +99,11 @@ def login(username, password):
         pass
 
 
+def logout():
+    r = s.get('https://edux.pjwstk.edu.pl/Logout.aspx')
+    r.raise_for_status()
+
+
 def get_announcements(course, url):
     '''Gets all announcements
     '''
@@ -107,13 +112,8 @@ def get_announcements(course, url):
         r = s.get('https://edux.pjwstk.edu.pl/Announcements.aspx', stream=True)
         r.raise_for_status()
         new_announcements = extract_announcements(r.content)
-
-        # Get all timestamps from website
-
-        # Im not sure if timestamps are unique (probably not)
-        # so if (timestamp, message) is not found in the database
-        # then it will be added there
-
+        # All pairs of (timestamp, message) are saved to db
+        # if they arent there already
         for (timestamp, message) in new_announcements:
             announcement = session.query(Announcement). \
                 filter_by(course=course,
@@ -167,14 +167,14 @@ def get_courses():
 
 def main():
     try:
-        print 'login'
         login(os.environ['EDUX_USERNAME'], os.environ['EDUX_PASSWORD'])
     except LoginError as e:
         sys.stderr.write(u'LoginError({})\n'.format(e))
-    else:
+        return
+    try:
         get_courses()
     finally:
-        print 'logout'
+        logout()
 
 
 if __name__ == '__main__':
