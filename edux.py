@@ -104,8 +104,6 @@ def get_announcements(url):
     '''
     r = s.get('https://edux.pjwstk.edu.pl/Announcements.aspx')
     r.raise_for_status()
-    with open('Course.html', 'w') as fileobj:
-        fileobj.write(r.content)
     fileobj = StringIO(r.content)
 
     for (timestamp, message) in extract_announcements(fileobj):
