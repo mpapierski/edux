@@ -7,7 +7,7 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
-from database import Session, Course
+from database import Session, Course, Announcement
 
 s = requests.Session()
 
@@ -52,12 +52,12 @@ def extract_courses(fileobj):
         yield (course_id, a['title'], url)
 
 
-def extract_announcements(fileobj):
+def extract_announcements(content):
     '''Extracts all announcements
 
     Returns list of pairs (timestmap, message)
     '''
-    bs = BeautifulSoup(fileobj.read(), 'html.parser')
+    bs = BeautifulSoup(content, 'html.parser')
     announcements = bs.select(
         '#ctl00_ContentPlaceHolder1_grdOgloszenia_ctl00 tbody')[0]
 
@@ -99,17 +99,40 @@ def login(username, password):
         pass
 
 
-def get_announcements(url):
+def get_announcements(course, url):
     '''Gets all announcements
     '''
-    r = s.get('https://edux.pjwstk.edu.pl/Announcements.aspx')
-    r.raise_for_status()
-    fileobj = StringIO(r.content)
+    session = Session()
+    try:
+        r = s.get('https://edux.pjwstk.edu.pl/Announcements.aspx', stream=True)
+        r.raise_for_status()
+        new_announcements = extract_announcements(r.content)
 
-    for (timestamp, message) in extract_announcements(fileobj):
-        print '---'
-        print timestamp
-        print message
+        # Get all timestamps from website
+
+        # Im not sure if timestamps are unique (probably not)
+        # so if (timestamp, message) is not found in the database
+        # then it will be added there
+
+        for (timestamp, message) in new_announcements:
+            announcement = session.query(Announcement). \
+                filter_by(course=course,
+                          created_at=timestamp,
+                          message=message). \
+                first()
+            if announcement is None:
+                announcement = Announcement(
+                    course=course,
+                    created_at=timestamp,
+                    message=message)
+                session.add(announcement)
+                print 'New announcement at {0}'.format(timestamp)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def get_courses():
@@ -136,8 +159,9 @@ def get_courses():
         # Get inside the course
         r = s.get(url)
         r.raise_for_status()
+        session.expunge(course)
         # Get announcement for this course
-        get_announcements(url)
+        get_announcements(course, url)
     session.commit()
 
 
