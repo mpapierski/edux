@@ -7,6 +7,7 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
+from database import Session, Course
 
 s = requests.Session()
 
@@ -118,15 +119,28 @@ def get_courses():
 
     Gets all courses
     '''
+    session = Session()
     r = s.get('https://edux.pjwstk.edu.pl/Premain.aspx')
     r.raise_for_status()
     fileobj = StringIO(r.content)
+
     for (course_id, name, url) in extract_courses(fileobj):
+        course = session.query(Course). \
+            filter_by(course_id=course_id). \
+            first()
+        if course is None:
+            print 'Add new course "{}"'.format(name)
+            course = Course(
+                course_id=course_id,
+                title=name)
+            session.add(course)
+        print course.title
         # Get inside the course
         r = s.get(url)
         r.raise_for_status()
         # Get announcement for this course
         get_announcements(url)
+    session.commit()
 
 
 def main():
