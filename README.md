@@ -7,6 +7,10 @@ I often forget about my courses so I wrote this little tool to notify me about n
 
 You still have to do your homework. Seriously. This script just saves you from checking new stuff on `edux` (and you usually forget to do this).
 
+# License
+
+GPL because I really care about your modification if it makes this software better.
+
 # Config
 
 ## EDUX_USERNAME
