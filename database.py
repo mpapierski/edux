@@ -19,8 +19,6 @@ class Announcement(Base):
     course_id = Column(Integer, ForeignKey('courses.course_id'))
     created_at = Column(Date)
     message = Column(String)
-    # Use cascade='delete,all' to propagate the deletion of a Department onto
-    # its Employees
     course = relationship(
         Course,
         backref=backref('announcements',
