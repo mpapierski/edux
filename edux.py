@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from database import Session, Course, Announcement
+from notify import send_email
 
 s = requests.Session()
 
@@ -105,7 +106,9 @@ def logout():
 
 
 def get_announcements(course, url):
-    '''Gets all announcements
+    '''Gets all new announcements
+
+    Returns a list of all new announcements.
     '''
     session = Session()
     try:
@@ -127,6 +130,7 @@ def get_announcements(course, url):
                     message=message)
                 session.add(announcement)
                 print 'New announcement at {0}'.format(timestamp)
+                yield (timestamp, message)
         session.commit()
     except Exception:
         session.rollback()
@@ -145,6 +149,8 @@ def get_courses():
     r.raise_for_status()
     fileobj = StringIO(r.content)
 
+    new_announcements = []
+
     for (course_id, name, url) in extract_courses(fileobj):
         course = session.query(Course). \
             filter_by(course_id=course_id). \
@@ -161,7 +167,25 @@ def get_courses():
         r.raise_for_status()
         session.expunge(course)
         # Get announcement for this course
-        get_announcements(course, url)
+        for (timestamp, announcement) in get_announcements(course, url):
+            new_announcements.append((course.title, timestamp, announcement))
+
+    subject = 'You have {0} new announcements on EDUX'.format(
+        len(new_announcements))
+
+    body = u''
+
+    for i, (course, timestamp, announcement) in enumerate(new_announcements,
+                                                          1):
+        body += u'{0}. {1} at {2}\n{3}\n\n'.format(
+            i,
+            timestamp,
+            course,
+            announcement)
+
+    if body:
+        send_email('michal@papierski.net', subject, body)
+
     session.commit()
 
 
