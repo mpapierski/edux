@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import operator
-from StringIO import StringIO
 from datetime import datetime
 
 import requests
@@ -42,12 +41,12 @@ def get_form_events(bs):
     return event
 
 
-def extract_courses(fileobj):
+def extract_courses(content):
     '''Extracts all courses.
 
     Returns list of pairs (name, url)
     '''
-    bs = BeautifulSoup(fileobj.read(), 'html.parser')
+    bs = BeautifulSoup(content, 'html.parser')
     courses = bs.select('#ctl00_ContentPlaceHolder1_grdKursy_ctl00 tbody')[0]
     for tr in courses.select('tr'):
         a = tr.select('a')[0]
@@ -152,11 +151,10 @@ def get_courses():
     session = Session()
     r = s.get('https://edux.pjwstk.edu.pl/Premain.aspx')
     r.raise_for_status()
-    fileobj = StringIO(r.content)
 
     new_announcements = []
 
-    for (course_id, name, url) in extract_courses(fileobj):
+    for (course_id, name, url) in extract_courses(r.content):
         course = session.query(Course). \
             filter_by(course_id=course_id). \
             first()
