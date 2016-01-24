@@ -9,7 +9,8 @@ You still have to do your homework. Seriously. This script just saves you from c
 
 # License
 
-GPL because I really care about your modification if it makes this software better.
+1. GPL because I really care about your modification if it makes this software better.
+2. Beerware if you find it useful.
 
 # Config
 
