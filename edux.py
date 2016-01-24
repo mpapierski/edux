@@ -1,3 +1,9 @@
+# -*- encoding: utf-8 -*-
+#
+# Usage: python edux.py
+#
+# Michal Papierski <michal@papierski.net>
+#
 import os
 import re
 import sys
@@ -22,6 +28,12 @@ class LoginError(Exception):
 
 
 def get_form_events(bs):
+    '''Extracts meta vars in form...
+
+    Because they use ASP.NET so its not that easy to make a
+    POST requests.
+    '''
+    # This is all we care about
     events = [
         '__EVENTTARGET',
         '__EVENTARGUMENT',
@@ -50,6 +62,9 @@ def extract_courses(content):
     courses = bs.select('#ctl00_ContentPlaceHolder1_grdKursy_ctl00 tbody')[0]
     for tr in courses.select('tr'):
         a = tr.select('a')[0]
+        # This course id is useful for our internal database
+        # so we dont have to force course title to be our primary
+        # key, or make any artificial primary key.
         (course_id, ) = re.findall(
             r'req\.aspx\?id=(\d+)$', a['href'])
         course_id = int(course_id)
@@ -70,9 +85,17 @@ def extract_announcements(content):
 
     for announcement in announcements.select('tr'):
         (timestamp, message, ) = announcement.select('td')
+        # This will convert the timestamp string to a python date.
+        # I am almost sure they output the timestamps already shifted
+        # with local timezone (because timezones are hard man)
+        # TODO: Make it UTC datetime like this: YYYY-MM-DD 00:00:00+00
         timestamp = datetime.strptime(timestamp.text, '%Y-%m-%d').date()
+        # BeautifulSoup extracts HTML tags and this text looks ugly and has
+        # alot of white chars. This strips them to a single white char.
         message = re.sub(r'\s+', ' ', message.text)
         result.append((timestamp, message))
+
+    # XXX: For some reason I reverse the list and I dont need to do this
     return reversed(result)
 
 
@@ -84,6 +107,7 @@ def login(username, password):
     r.raise_for_status()
     bs = BeautifulSoup(r.content, 'html.parser')
     form = get_form_events(bs)
+    # ASP.NET serious stuff here
     form['ctl00$ContentPlaceHolder1$Login1$LoginButton'] = 'Zaloguj'
     form['ctl00$ContentPlaceHolder1$Login1$UserName'] = username
     form['ctl00$ContentPlaceHolder1$Login1$Password'] = password
@@ -95,6 +119,7 @@ def login(username, password):
     bs = BeautifulSoup(r.content, 'html.parser')
 
     try:
+        # Much html5 here... many wow...
         font = bs.select(
             '#ctl00_ContentPlaceHolder1_Login1 tr td table font[color=Red]')[0]
         error = font.text.strip()
@@ -105,6 +130,11 @@ def login(username, password):
 
 
 def logout():
+    '''Logout from edux.
+
+    This makes those ASP.NET admins happy right? No more dead sessions in
+    the expensive MSSQL database?
+    '''
     r = s.get('https://edux.pjwstk.edu.pl/Logout.aspx')
     r.raise_for_status()
 
@@ -128,6 +158,7 @@ def get_announcements(course, url):
                           message=message). \
                 first()
             if announcement is None:
+                # This is what we care about
                 announcement = Announcement(
                     course=course,
                     created_at=timestamp,
@@ -173,6 +204,8 @@ def get_courses():
         for (timestamp, announcement) in get_announcements(course, url):
             new_announcements.append((course.title, timestamp, announcement))
 
+    # Prepare email stuff from gathered data
+
     subject = 'You have {0} new announcements on EDUX'.format(
         len(new_announcements))
 
@@ -182,6 +215,7 @@ def get_courses():
     sorted_announcements = sorted(new_announcements,
                                   key=operator.itemgetter(1),
                                   reverse=True)
+    # TODO: Use some templating here
     for i, (course, timestamp, announcement) in enumerate(sorted_announcements,
                                                           1):
         body += u'{0}. {1} at {2}\n{3}\n\n'.format(
@@ -190,6 +224,7 @@ def get_courses():
             course,
             announcement)
 
+    # Cant send empty body because mailgun throws HTTP400s.
     if body:
         send_email(EMAIL_SENDER, EMAIL_RECIPIENT, subject, body)
 
