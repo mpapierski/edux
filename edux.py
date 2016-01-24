@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import operator
 from StringIO import StringIO
 from datetime import datetime
 
@@ -175,7 +176,11 @@ def get_courses():
 
     body = u''
 
-    for i, (course, timestamp, announcement) in enumerate(new_announcements,
+    # Sort new announcements so highest date (newer) will be on top
+    sorted_announcements = sorted(new_announcements,
+                                  key=operator.itemgetter(1),
+                                  reverse=True)
+    for i, (course, timestamp, announcement) in enumerate(sorted_announcements,
                                                           1):
         body += u'{0}. {1} at {2}\n{3}\n\n'.format(
             i,
