@@ -14,6 +14,10 @@ from notify import send_email
 s = requests.Session()
 
 
+EMAIL_SENDER = os.environ['EMAIL_SENDER']
+EMAIL_RECIPIENT = os.environ['EMAIL_RECIPIENT']
+
+
 class LoginError(Exception):
     '''Unable to login'''
 
@@ -189,7 +193,7 @@ def get_courses():
             announcement)
 
     if body:
-        send_email('michal@papierski.net', subject, body)
+        send_email(EMAIL_SENDER, EMAIL_RECIPIENT, subject, body)
 
     session.commit()
 

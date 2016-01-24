@@ -7,10 +7,10 @@ key = os.environ['MAILGUN_APIKEY']
 domain = os.environ['MAILGUN_DOMAIN']
 
 
-def send_email(recipient, subject, text):
+def send_email(sender, recipient, subject, text):
     request_url = 'https://api.mailgun.net/v2/{}/messages'.format(domain)
     r = requests.post(request_url, auth=('api', key), data={
-        'from': 'michal@papierski.net',
+        'from': sender,
         'to': recipient,
         'subject': subject,
         'text': text
