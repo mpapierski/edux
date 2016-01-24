@@ -3,6 +3,10 @@ edux notifier
 
 I often forget about my courses so I wrote this little tool to notify me about new announcements.
 
+**WARNING**
+
+You still have to do your homework. Seriously. This script just saves you from checking new stuff on `edux` (and you usually forget to do this).
+
 # Config
 
 ## EDUX_USERNAME
@@ -32,3 +36,8 @@ Who is receiving the email.
 # How to run
 
 You want to run it in cron every day if you do not really care. Run it every few hours and you will never miss anything.
+
+# TODO
+
+- Grab quiz data and put into your CalDAV compatible calendar (never miss a quiz)
+- Grab exercises data and put into your CalDAV compatible calendar (never miss a deadline on exercises)
