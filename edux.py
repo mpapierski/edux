@@ -13,7 +13,7 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
-from database import Session, Course, Announcement
+from database import Session, Course, Announcement, Quiz
 from notify import send_email
 
 s = requests.Session()
@@ -24,7 +24,20 @@ EMAIL_SENDER = os.environ['EMAIL_SENDER']
 EMAIL_RECIPIENT = os.environ['EMAIL_RECIPIENT']
 
 
+def send_notify(subject, body):
+    '''Send notification
+    '''
+    if not body:
+        return
+    if AIRPLANE_MODE:
+        sys.stdout.write(u'Subject: {0}\n'.format(subject))
+        sys.stdout.write(u'Body: {0}\n'.format(body))
+    else:
+        send_email(EMAIL_SENDER, EMAIL_RECIPIENT, subject, body)
+
+
 class LoginError(Exception):
+
     '''Unable to login'''
 
 
@@ -98,6 +111,36 @@ def extract_announcements(content):
 
     # XXX: For some reason I reverse the list and I dont need to do this
     return reversed(result)
+
+
+def extract_quiz(content):
+    '''Extracts all quiz
+    '''
+    bs = BeautifulSoup(content, 'html.parser')
+    try:
+        tbody = bs.select(
+            '#ctl00_ContentPlaceHolder1_QuizyRadGrid_ctl00 tbody')[0]
+    except IndexError:
+        return
+    for tr in tbody.select('tr'):
+        (td1, td2, td3, td4, td5, td6, td7) = tr.select('td')
+        quiz_id = int(td1.text.strip())
+        # td2 is unkown value
+        title = td3.text.strip()
+        try:
+            start_at = datetime.strptime(td4.text.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            start_at = None
+
+        try:
+            finish_at = datetime.strptime(td5.text.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            finish_at = None
+
+        duration = td6.text.strip()
+        score = td7.text.strip()
+
+        yield (quiz_id, title, start_at, finish_at, duration, score)
 
 
 def login(username, password):
@@ -175,6 +218,85 @@ def get_announcements(course, url):
         session.close()
 
 
+def get_quiz(course):
+    '''Navigates to quiz
+
+    Gets all quiz
+    '''
+    session = Session()
+    try:
+        r = s.get('https://edux.pjwstk.edu.pl/Quiz.aspx')
+        r.raise_for_status()
+
+        # quiz = []
+
+        for (quiz_id,
+             title,
+             start_at,
+             finish_at,
+             duration,
+             score) in extract_quiz(r.content):
+            quiz = session.query(Quiz). \
+                filter_by(quiz_id=quiz_id). \
+                first()
+            if quiz is None:
+                quiz = Quiz(
+                    course=course,
+                    quiz_id=quiz_id,
+                    title=title,
+                    start_at=start_at,
+                    finish_at=finish_at,
+                    duration=duration,
+                    score=score
+                )
+                session.add(quiz)
+                print u'New quiz "{0}" {1} - {2}'.format(
+                    quiz.title,
+                    quiz.start_at,
+                    quiz.finish_at)
+                send_notify(u'Quiz "{0.title}" at {1.title}'.format(quiz,
+                                                                    course),
+                            u'''Quiz title: {0.title}
+Course: {1.title}
+Start: {0.start_at}
+Finish: {0.finish_at}
+Duration: {0.duration}
+Score: {0.score}
+'''.format(quiz, course))
+
+            if (quiz.title != title or
+                    quiz.start_at != start_at or
+                    quiz.finish_at != finish_at or
+                    quiz.duration != duration or
+                    quiz.score != score):
+                send_notify(u'Quiz "{0.title}" changed'.format(quiz,
+                                                               course),
+                            u'''Quiz title: {new[title]} (old: {0.title})
+Course: {1.title}
+Start: {new[start_at]} (old: {0.start_at})
+Finish: {new[finish_at]} (old: {0.finish_at})
+Duration: {new[duration]} (old: {0.duration})
+Score: {new[score]} (old: {0.score})
+'''.format(quiz, course, new={'title': title,
+                              'start_at': start_at,
+                              'finish_at': finish_at,
+                              'duration': duration,
+                              'score': score}))
+                quiz.title = title
+                quiz.start_at = start_at
+                quiz.finish_at = finish_at
+                quiz.duration = duration
+                quiz.score = score
+                session.add(quiz)
+
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 def get_courses():
     '''Navigates to Premain
 
@@ -205,6 +327,8 @@ def get_courses():
         for (timestamp, announcement) in get_announcements(course, url):
             new_announcements.append((course.title, timestamp, announcement))
 
+        get_quiz(course)
+
     # Prepare email stuff from gathered data
 
     subject = 'You have {0} new announcements on EDUX'.format(
@@ -226,8 +350,7 @@ def get_courses():
             announcement)
 
     # Cant send empty body because mailgun throws HTTP400s.
-    if not AIRPLANE_MODE and body:
-        send_email(EMAIL_SENDER, EMAIL_RECIPIENT, subject, body)
+    send_notify(subject, body)
 
     session.commit()
 

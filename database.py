@@ -24,6 +24,22 @@ class Announcement(Base):
         backref=backref('announcements',
                         cascade='delete,all'))
 
+
+class Quiz(Base):
+    __tablename__ = 'quiz'
+    quiz_id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, ForeignKey('courses.course_id'))
+    title = Column(String)
+    start_at = Column(Date)
+    finish_at = Column(Date)
+    duration = Column(String)
+    score = Column(String)
+
+    course = relationship(
+        Course,
+        backref=backref('quiz',
+                        cascade='delete,all'))
+
 from sqlalchemy import create_engine
 engine = create_engine('sqlite:///db.sqlite')
 
