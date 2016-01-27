@@ -38,6 +38,10 @@ Who is sending the email.
 
 Who is receiving the email.
 
+## AIRPLANE_MODE
+
+When present, no notification will be sent.
+
 # How to run
 
 You want to run it in cron every day if you do not really care. Run it every few hours and you will never miss anything.

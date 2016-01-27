@@ -19,6 +19,7 @@ from notify import send_email
 s = requests.Session()
 
 
+AIRPLANE_MODE = os.getenv('AIRPLANE_MODE')
 EMAIL_SENDER = os.environ['EMAIL_SENDER']
 EMAIL_RECIPIENT = os.environ['EMAIL_RECIPIENT']
 
@@ -225,7 +226,7 @@ def get_courses():
             announcement)
 
     # Cant send empty body because mailgun throws HTTP400s.
-    if body:
+    if not AIRPLANE_MODE and body:
         send_email(EMAIL_SENDER, EMAIL_RECIPIENT, subject, body)
 
     session.commit()
