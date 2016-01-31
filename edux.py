@@ -13,7 +13,7 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
-from database import Session, Course, Announcement, Quiz
+from database import Session, Course, Announcement, Quiz, Folder
 from notify import send_email
 
 s = requests.Session()
@@ -143,6 +143,32 @@ def extract_quiz(content):
         yield (quiz_id, title, start_at, finish_at, duration, score)
 
 
+def extract_folders(content):
+    '''Extracts folders
+    '''
+    bs = BeautifulSoup(content, 'html.parser')
+    try:
+        tbody = bs.select(
+            '#ctl00_ContentPlaceHolder1_grdFolder_ctl00 tbody')[0]
+    except IndexError:
+        return
+    for tr in tbody.select('tr'):
+        (td1, td2, td3, td4) = tr.select('td')
+        folder_id = int(td1.text.strip())
+        title = td2.text.strip()
+        try:
+            start_at = datetime.strptime(td3.text.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            start_at = None
+
+        try:
+            finish_at = datetime.strptime(td4.text.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            finish_at = None
+
+        yield (folder_id, title, start_at, finish_at)
+
+
 def login(username, password):
     '''Logs in to the edux website
     '''
@@ -214,6 +240,55 @@ def get_announcements(course, url):
     except Exception:
         session.rollback()
         raise
+    finally:
+        session.close()
+
+
+def get_folders(course):
+    '''Gets all folders
+    '''
+    session = Session()
+    try:
+        r = s.get('https://edux.pjwstk.edu.pl/Folder.aspx')
+        r.raise_for_status()
+        new_folders = extract_folders(r.content)
+        for (folder_id, title, start_at, finish_at) in new_folders:
+            folder = session.query(Folder). \
+                filter_by(folder_id=folder_id). \
+                first()
+            if folder is None:
+                folder = Folder(
+                    folder_id=folder_id,
+                    course=course,
+                    title=title,
+                    start_at=start_at,
+                    finish_at=finish_at)
+                send_notify('New folder "{}" at {}'.format(title,
+                                                           course.title),
+                            '''Folder title: {0.title}
+Start at: {0.start_at}
+Finish at: {0.finish_at}'''.format(folder))
+
+                session.add(folder)
+            if (folder.title != title or
+                    folder.start_at != start_at or
+                    folder.finish_at != finish_at):
+                new = {
+                    'title': title,
+                    'start_at': start_at,
+                    'finish_at': finish_at
+                }
+                send_notify('Folder "{0}" updated'.format(title),
+                            '''Folder title: {new[title]} (old: {0.title})
+Start at: {new[start_at]} (old: {0.start_at})
+Finish at: {new[finish_at]} (old: {0.finish_at})'''.format(folder,
+                                                           new=new))
+
+                folder.title = title
+                folder.start_at = start_at
+                folder.finish_at = finish_at
+                session.add(folder)
+        session.commit()
     finally:
         session.close()
 
@@ -328,6 +403,7 @@ def get_courses():
             new_announcements.append((course.title, timestamp, announcement))
 
         get_quiz(course)
+        get_folders(course)
 
     # Prepare email stuff from gathered data
 

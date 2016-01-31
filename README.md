@@ -46,10 +46,6 @@ When present, no notification will be sent.
 
 You want to run it in cron every day if you do not really care. Run it every few hours and you will never miss anything.
 
-# TODO
-
-- Grab exercises data and put into your CalDAV compatible calendar (never miss a deadline on exercises)
-
 # Authors
 
 * Michał Papierski <michal@papierski.net>

@@ -40,6 +40,19 @@ class Quiz(Base):
         backref=backref('quiz',
                         cascade='delete,all'))
 
+
+class Folder(Base):
+    __tablename__ = 'folders'
+    folder_id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, ForeignKey('courses.course_id'))
+    title = Column(String)
+    start_at = Column(Date)
+    finish_at = Column(Date)
+    course = relationship(
+        Course,
+        backref=backref('folders',
+                        cascade='delete,all'))
+
 from sqlalchemy import create_engine
 engine = create_engine('sqlite:///db.sqlite')
 
