@@ -92,8 +92,11 @@ def extract_announcements(content):
     Returns list of pairs (timestmap, message)
     '''
     bs = BeautifulSoup(content, 'html.parser')
-    announcements = bs.select(
-        '#ctl00_ContentPlaceHolder1_grdOgloszenia_ctl00 tbody')[0]
+    try:
+        announcements = bs.select(
+            '#ctl00_ContentPlaceHolder1_grdOgloszenia_ctl00 tbody')[0]
+    except IndexError:
+        return []
 
     result = []
 
