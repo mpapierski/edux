@@ -101,7 +101,10 @@ def extract_announcements(content):
     result = []
 
     for announcement in announcements.select('tr'):
-        (timestamp, message, ) = announcement.select('td')
+        try:
+            (timestamp, message, ) = announcement.select('td')
+        except ValueError:
+            break
         # This will convert the timestamp string to a python date.
         # I am almost sure they output the timestamps already shifted
         # with local timezone (because timezones are hard man)
@@ -126,7 +129,10 @@ def extract_quiz(content):
     except IndexError:
         return
     for tr in tbody.select('tr'):
-        (td1, td2, td3, td4, td5, td6, td7) = tr.select('td')
+        try:
+            (td1, td2, td3, td4, td5, td6, td7) = tr.select('td')
+        except ValueError:
+            break
         quiz_id = int(td1.text.strip())
         # td2 is unkown value
         title = td3.text.strip()
@@ -156,7 +162,10 @@ def extract_folders(content):
     except IndexError:
         return
     for tr in tbody.select('tr'):
-        (td1, td2, td3, td4) = tr.select('td')
+        try:
+            (td1, td2, td3, td4) = tr.select('td')
+        except ValueError:
+            break
         folder_id = int(td1.text.strip())
         title = td2.text.strip()
         try:
@@ -386,7 +395,7 @@ def get_courses():
 
     new_announcements = []
 
-    for (course_id, name, url) in extract_courses(r.content):
+    for i, (course_id, name, url) in enumerate(extract_courses(r.content)):
         course = session.query(Course). \
             filter_by(course_id=course_id). \
             first()
@@ -401,12 +410,18 @@ def get_courses():
         r = s.get(url)
         r.raise_for_status()
         session.expunge(course)
-        # Get announcement for this course
-        for (timestamp, announcement) in get_announcements(course, url):
-            new_announcements.append((course.title, timestamp, announcement))
-
-        get_quiz(course)
-        get_folders(course)
+        course_content = r.content
+        if 'Announcements.aspx' in course_content:
+            print 'There are announcements'
+            # Get announcement for this course
+            for (timestamp, announcement) in get_announcements(course, url):
+                new_announcements.append((course.title, timestamp, announcement))
+        if 'Quiz.aspx' in course_content:
+            print 'There are quizes'
+            get_quiz(course)
+        if 'Folder.aspx' in course_content:
+            print 'There are folders'
+            get_folders(course)
 
     # Prepare email stuff from gathered data
 
