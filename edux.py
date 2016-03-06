@@ -237,7 +237,7 @@ def get_announcements(course, url):
                     created_at=timestamp,
                     message=message)
                 session.add(announcement)
-                print 'New announcement at {0}'.format(timestamp)
+                print u'New announcement at {0}'.format(timestamp)
                 yield (timestamp, message)
         session.commit()
     except Exception:
@@ -391,7 +391,7 @@ def get_courses():
             filter_by(course_id=course_id). \
             first()
         if course is None:
-            print 'Add new course "{}"'.format(name)
+            print u'Add new course "{}"'.format(name)
             course = Course(
                 course_id=course_id,
                 title=name)
